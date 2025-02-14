@@ -1,7 +1,7 @@
-from src.dtw_lab.lab1 import calculate_statistic
+from src.dtw_lab.lab1 import calculate_statistic, encode_categorical_vars
 from src.dtw_lab.lab2 import get_statistic
 import pandas as pd
-import pytest
+
 
 
 def test_calculate_statistic():
@@ -102,3 +102,33 @@ def test_get_statistic(mocker):
     assert response == {"message": "The mean for column Charge_Left_Percentage is 31.875"}
 
     mock_read_csv.assert_called_once()
+
+def test_encode_categorical_vars():
+    # Create test input DataFrame
+    input_df = pd.DataFrame({
+        'Manufacturer': ['Duracell', 'Energizer', 'Duracell'],
+        'Battery_Size': ['AA', 'AAA', 'D'],
+        'Discharge_Speed': ['Fast', 'Slow', 'Medium'],
+        'Other_Column': [1, 2, 3]  # Adding non-encoded column to ensure it's preserved
+    })
+
+    # Run the function
+    result_df = encode_categorical_vars(input_df)
+
+    # Test one-hot encoding of Manufacturer
+    assert 'Manufacturer_Duracell' in result_df.columns
+    assert 'Manufacturer_Energizer' in result_df.columns
+    assert result_df['Manufacturer_Duracell'].tolist() == [1, 0, 1]
+    assert result_df['Manufacturer_Energizer'].tolist() == [0, 1, 0]
+
+    # Test Battery_Size mapping
+    expected_battery_sizes = [2, 1, 4]  # AA=2, AAA=1, D=4
+    assert result_df['Battery_Size'].tolist() == expected_battery_sizes
+
+    # Test Discharge_Speed mapping
+    expected_discharge_speeds = [3, 1, 2]  # Fast=3, Slow=1, Medium=2
+    assert result_df['Discharge_Speed'].tolist() == expected_discharge_speeds
+
+    # Test that other columns are preserved
+    assert 'Other_Column' in result_df.columns
+    assert result_df['Other_Column'].tolist() == [1, 2, 3]
