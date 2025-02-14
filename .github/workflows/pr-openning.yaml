@@ -43,4 +43,4 @@ jobs:
       run: ./scripts/build.sh
 
     - name: Run integration tests
-      run: ./scripts/integration.sh
+      run: ./scripts/integration_test.sh
