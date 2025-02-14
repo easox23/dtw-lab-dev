@@ -4,7 +4,7 @@ run-name: "Build Test and Deploy main to dev by @${{ github.actor }}"
 on:
   push:
     branches:
-      - *
+      - "*"
 
 permissions: read-all
 env:
