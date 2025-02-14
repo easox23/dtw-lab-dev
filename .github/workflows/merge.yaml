@@ -1,0 +1,78 @@
+name: PR Merge or Push to Main Workflow
+run-name: "Build Test and Deploy main to dev by @${{ github.actor }}"
+
+on:
+  push:
+    branches:
+      - *
+
+permissions: read-all
+env:
+  LOGIN_SERVER: ${{ secrets.LOGIN_SERVER }}
+  TEAM_NUMBER: ${{ vars.TEAM_NUMBER }}
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v2
+
+    - name: Run unit tests
+      run: poetry run pytest
+
+    - name: Build Docker image
+      run: ./scripts/build.sh
+
+    - name: Run integration tests
+      run: ./scripts/integration_test.sh
+    
+    - name: Release image
+      id: release
+      env:
+        REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+        REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      run: ./scripts/release.sh
+    outputs:
+      package-version: ${{ steps.release.outputs.package-version }}
+  deploy-to-dev:
+    needs: release
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v2
+    - name: Deploy to Dev
+      env:
+        PACKAGE_VERSION: ${{ needs.release.outputs.package-version }}
+        AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+        REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      run: ./scripts/deploy.sh
+  e2e-tests:
+    needs: deploy-to-dev
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run E2E tests
+      run: ./scripts/e2e_test.sh
+    
+    
