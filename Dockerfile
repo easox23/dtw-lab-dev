@@ -12,11 +12,11 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock ./
 RUN touch README.md
 
-RUN poetry install --without dev --no-root && rm -rf $POETRY_CACHE_DIR
+RUN poetry install --no-root && rm -rf $POETRY_CACHE_DIR
 
 COPY src/dtw_lab ./src/dtw_lab
 
-RUN poetry install --without dev
+RUN poetry install 
 
 ENV PATH="/app/.venv/bin:$PATH"
 
